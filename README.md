@@ -1,5 +1,7 @@
 # dsh-recall
 
+🌏 [中文](README.zh.md) · English
+
 > **AI never forgets what you told it.**
 
 A native [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) plugin that gives the agent a **memory maze** — corridors and rooms built from every conversation you have had together. Every decision, setting, discussion, or casually mentioned requirement is remembered. Ask "where were we?" and it walks the maze, brings back the conversation **verbatim**, and answers as naturally as if it had never forgotten — you won't even notice it thought for a moment.
