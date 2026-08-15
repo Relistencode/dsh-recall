@@ -33,9 +33,11 @@ dsh-recall（npm 独立包，host 插件）
 │   ├─ 上下文：ctx.sessionQuery.readTitle（会话标题）+ readEvent（命中前后 ±N 轮）
 │   ├─ 会话聚合：按会话分组，组内按命中强度排序，输出分组结果
 │   └─ 输出：{ query, total, groups: [{ sessionId, title, cwd, time, snippet, context[] }] }
-├─ 设置页（二期）：搜索框 + 分组结果 + 展开上下文 + **默认作用域设置**（当前对话/跨对话/跨项目）
-├─ 语义层（三期）：本地 embedding（ONNX，bge-small-zh）混合召回 + rerank（参考 dsh-mneme）
-└─ 压缩配合（二期）：监听 checkpoint 事件登记摘要 + 提炼决策条目
+├─ 自定义 ToolView（lib/client.js，tool.call.toolview key=recall）
+│   ├─ 运行中：光波扫动动画 + 「回忆中…」（无感知，安静）
+│   ├─ 完成：一行极简「回忆完成」（结果由 agent 在回复中呈现，UI 不进模型上下文）
+│   └─ 失败：一行错误原因
+└─ 语义层（三期）：本地 embedding（ONNX，bge-small-zh）混合召回 + rerank（参考 dsh-mneme）
 ```
 
 **依赖**：
@@ -65,13 +67,11 @@ dsh-recall（npm 独立包，host 插件）
 - [ ] 提交（不推送）
 
 ### 二期
-- [ ] 设置页可视化（搜索框 + 分组结果 + 展开上下文；i18n zh/en）
-- [ ] 压缩配合：监听 checkpoint 摘要事件 → 登记为可检索记忆条目；提炼"设定/决策"条目
 - [ ] 工具增强：`mode: browse`（按会话浏览全文）、时间范围过滤、结果 LLM 精排/摘要
-- [ ] 自动辅助开关：新会话开始自动召回 2-3 条最相关历史（默认关）
+- [ ] 压缩配合（待用户决定）：监听 checkpoint 摘要事件 → 登记为可检索记忆条目；提炼"设定/决策"条目
+- [ ] 语义层：本地 embedding（ONNX bge-small-zh）向量召回 + rerank 精排 + 向量聚类（参考 dsh-mneme）
 
 ### 三期（远期）
-- [ ] 语义层：本地 embedding（ONNX bge-small-zh）向量召回 + rerank 精排 + 向量聚类（参考 dsh-mneme）
 - [ ] 主题化检索：结果按话题聚类合并，避免"大量相似内容"噪音
 - [ ] 评估更好的压缩机制：主题化压缩 / 分层压缩 / 模型驱动压缩（billion-context-dsh 思路）——**只评估，不动 DSH 核心**
 
@@ -81,8 +81,10 @@ dsh-recall（npm 独立包，host 插件）
 |---|---|
 | 一个工具而非多个 | agent 调用模式是"一次提问一次检索"；多阶段筛选（改写/召回/精排/聚合/解析）封装在工具内部 |
 | 手动为主 | 自动注入占 token、时机难判断；人搜微信也是主动搜 |
+| **无感知定位** | 面向长期单窗口工作者（文字工作者/项目维护者/游戏与角色扮演用户）：工具自动工作，用户只需看到安静的回移动效；**不做设置页/搜索界面** |
+| **完成态不展示结果** | agent 在回复中呈现结果；UI 保持一行状态（回忆完成/失败），节省用户注意力（UI 本就不进模型上下文） |
 | 依赖官方 sessionQuery | 官方已自动索引全量历史（含压缩前的 shadowed），无需自建索引/解析 zstd；工作量降一个数量级 |
-| 一期不动压缩 | 日志 append-only，压缩不影响可搜性；压缩配合（摘要登记/决策提炼）二期做，重工程远期只评估 |
+| 一期不动压缩 | 日志 append-only，压缩不影响可搜性；压缩配合（摘要登记/决策提炼）待定，重工程远期只评估 |
 | 独立仓库 | 与 dsh-extension-hub 解耦，独立版本迭代；贡献指南可进 awesome-dsh-plugin |
 
 ## 6. 参考
