@@ -19,6 +19,7 @@
 | 精准定位 | 五层：① agent 查询理解/改写（模糊→精确词 + 工作区过滤）② 官方 FTS5 命中排序 ③ 元数据过滤（cwd/时间）④ 会话级聚合 ⑤ LLM 精排/摘要（二期） |
 | 语义 | 二期/三期：embedding 混合召回补字面盲区（参考 dsh-mneme 本地 ONNX） |
 | 压缩配合 | 一期不动压缩（日志 append-only，FTS5 索引完整保留历史，压缩不影响召回）；二期登记 checkpoint 摘要 + 提炼设定/决策条目；远期评估主题化/分层压缩 |
+| **作用域** | **默认只搜当前会话**；跨对话（同工作区）/跨项目（全部）只在**用户明确要求**时发生（agent 不会主动扩大——工具描述写死约束，仅当用户说"去看看执行窗口干了什么""参考一下 recall 项目"这类话才扩大）；设置页（二期）提供默认作用域设置（当前对话/跨对话/跨项目） |
 | 形态 | 独立插件 `dsh-recall`（可随时卸载，附加功能生态），工具 `recall` 注册给 agent |
 
 ## 3. 架构
@@ -26,12 +27,13 @@
 ```
 dsh-recall（npm 独立包，host 插件）
 ├─ 工具 `recall`（ctx.tools.register，defineTool）
-│   ├─ 查询规范化：trim/分词/大小写；可选 workspace(cwd)/time 过滤
+│   ├─ 查询规范化：trim/分词/大小写
+│   ├─ 作用域：默认当前会话（session id 过滤）；scope=workspace（cwd 过滤）/ all（无过滤），仅用户明确要求时扩大
 │   ├─ 粗召回：ctx.sessionQuery.searchSessions（官方 FTS5，自动增量索引全量 zstd JSONL 历史）
 │   ├─ 上下文：ctx.sessionQuery.readTitle（会话标题）+ readEvent（命中前后 ±N 轮）
 │   ├─ 会话聚合：按会话分组，组内按命中强度排序，输出分组结果
-│   └─ 输出：{ query, total, groups: [{ sessionId, title, workspace, time, hits: [{seq, role, text, before[], after[]}] }] }
-├─ 设置页（二期）：搜索框 + 分组结果 + 展开上下文（client-modules + settings.section）
+│   └─ 输出：{ query, total, groups: [{ sessionId, title, cwd, time, snippet, context[] }] }
+├─ 设置页（二期）：搜索框 + 分组结果 + 展开上下文 + **默认作用域设置**（当前对话/跨对话/跨项目）
 ├─ 语义层（三期）：本地 embedding（ONNX，bge-small-zh）混合召回 + rerank（参考 dsh-mneme）
 └─ 压缩配合（二期）：监听 checkpoint 事件登记摘要 + 提炼决策条目
 ```
