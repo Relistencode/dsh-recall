@@ -1,7 +1,7 @@
 # dsh-recall 工程文档
 
 > 对话历史召回工具——"微信搜聊天记录"模式：上下文爆炸后，按语义/关键字检索**原始对话**，定位到消息并回看前后文。
-> 状态：一期开发中 · 独立仓库规划中 · 不推送
+> 状态：一期完成（3080 实机验证通过） · 独立仓库规划中 · 不推送
 
 ## 1. 背景与动机
 
@@ -48,23 +48,24 @@ dsh-recall（npm 独立包，host 插件）
 **关键事实（调研确认）**：
 - 会话日志：`~/.dsh/sessions/<workspace>/<sessionId>/session.jsonl.zstd`（JSONL + zstd，append-only）
 - 官方 `session-query-sqlite` 已自动索引日志（增量更新、三种 surface 可搜：current/shadowed/log-only）——**压缩前的历史仍然可搜**
+- **全文搜索默认关闭**：官方 dsh-base 默认 `path: ':memory:'`、`openAt: never`（搜索报 `SESSION_QUERY_SEARCH_DISABLED`）；部署须在 profile 的 `cordis.patch.yml` 覆盖为持久 `path`（如 `~/.dsh/storages/session-search.db`）+ `openAt: first-search`，**重启 dsh 实例后生效**（本机 3080/3099 已配）
 - `searchSessions`：跨会话全文搜索，按会话分组，FTS5 命中 span 数排序
 - `readEvent`：目标事件 + bounded 前后文窗口（before/after 上限 readWindowMax）
 - 工具注册：`ctx.tools.register(defineTool({name, description, parameters(JSON Schema), output:{schema}, execute(args, exec)}))`，apply 时全局注册
 
 ## 4. 实施计划
 
-### 一期（当前）
+### 一期（完成）
 - [x] 工程文档
-- [ ] 调研 SessionSearchRequest 精确形状（query/filters/pageSize 字段名）
-- [ ] 包骨架：package.json（name dsh-recall, exports ./lib/index.js）
-- [ ] lib/index.js：`recall` 工具
-  - parameters：`query`(string, required)、`workspace`(string, 可选 cwd 过滤)、`limit`(integer, 可选，默认 10)、`context`(integer, 前后文轮数，默认 3，上限 readWindowMax)
-  - execute：规范化 → searchSessions（filters 含 workspace）→ 对 top 命中 readTitle + readEvent → 聚合分组
-  - 错误处理：sessionQuery 缺失/搜索失败/无结果的可读消息
-- [ ] 单元测试（mock sessionQuery：命中分组、上下文窗口、workspace 过滤、空结果）
-- [ ] 3099 安装验证（junction + patch 行 → Inspect Tool.listTools 确认 `recall` 注册）
-- [ ] 提交（不推送）
+- [x] 调研 SessionSearchRequest 精确形状（query/filters/pageSize 字段名）
+- [x] 包骨架：package.json（name dsh-recall, exports ./lib/index.js）
+- [x] lib/index.js：`recall` 工具
+  - parameters：`query`(string, required)、`scope`(enum session/workspace/all，默认 session)、`workspace`(string, 可选 cwd 过滤)、`limit`(integer, 可选，默认 10)、`context`(integer, 前后文轮数，默认 3，上限 readWindowMax)
+  - execute：规范化 → searchSessions（filters 含 sessionId/workspace）→ 对 top 命中 readTitle + readEvent → 聚合分组
+  - 错误处理：sessionQuery 缺失/搜索失败（含 `SESSION_QUERY_SEARCH_DISABLED` 提示部署需开 openAt）/无结果的可读消息
+- [x] 单元测试（mock sessionQuery：命中分组、上下文窗口、workspace 过滤、空结果——.smoke-recall.mjs，29 断言）
+- [x] 安装验证（junction + patch 行 → Inspect 确认 `recall` 注册；3080 实机全文搜索「附加功能」命中本会话历史 ✓）
+- [x] 提交（不推送）
 
 ### 二期
 - [ ] 工具增强：`mode: browse`（按会话浏览全文）、时间范围过滤、结果 LLM 精排/摘要
