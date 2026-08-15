@@ -4,17 +4,17 @@
 
 > **AI 再也不会"忘记"你说的话了。**
 
-DeepSeek Harness (DSH) 原生插件:给 agent 一座**记忆迷宫**——为你们的每一段对话筑起走廊与房间。它记得你们之间发生过的一切:一个决定、一条设定、一次讨论、一句随口提的需求。你问"我们上次说到哪了",它走进迷宫,把当时的对话**原样**带回,再像聊天一样自然融进回答——你甚至察觉不到它"想了一下"。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) 原生插件:给 agent 一座**记忆迷宫**——为你们的每一段对话筑起走廊与房间。它记得你们之间发生过的一切:一个决定、一条设定、一次讨论、一句随口提的需求。你问"我们上次说到哪了",它走进迷宫,把当时的对话**原样**带回,再像聊天一样自然融进回答——你甚至察觉不到它"想了一下"。
 
 对话历史回忆 · 三层检索(字面 / 模糊 / 语义)· 完全本地离线 · 压缩免疫
 
 - 运行中,只在角落里安静地亮起一束扫动的光:
 
-  ![回忆中](assets/回忆中.png)
+  ![回忆中](assets/recalling.png)
 
 - 完成时,不留痕迹:
 
-  ![回忆完成](assets/回忆完成.png)
+  ![回忆完成](assets/recall-done.png)
 
 ## 它不是什么
 
@@ -39,7 +39,9 @@ DeepSeek Harness (DSH) 原生插件:给 agent 一座**记忆迷宫**——为你
 dsh plugin --profile web add dsh-recall
 ```
 
-重启 `dsh web`。没有额外步骤:模型随包预置(完整版约 37MB),首次搜索自动建立索引,随后在后台安静完成语义预热(几分钟,对你的使用无感知)。
+**一条命令即可**:包自带组合补丁(bundle 层),插件与它所需的全文搜索会自动接线。重启 `dsh web` 即可。没有额外步骤:模型随包预置(完整版约 37MB),首次搜索自动建立索引,随后在后台安静完成语义预热(几分钟,对你的使用无感知)。
+
+> 也可以在 [dsh-extension-hub](https://github.com/Relistencode/dsh-extension-hub) 的插件管理页 **「附加功能」** 区块里一键安装/停用/卸载本插件。
 
 ### 可选配置
 
@@ -129,7 +131,6 @@ node .smoke-semantic.mjs    # 真模型集成(需 models/ 就位)
 
 ## 参考与致谢
 
-- [PROJECT.md](PROJECT.md) —— 工程文档、决策记录、已知边界、二期计划
 - 官方:`@deepseek-ai/dsh-session-query(-sqlite)`、`dsh-tools`、`dsh-session-persistence`
 - 模型:BAAI/bge-small-zh-v1.5 (MIT) · onnx-community int8 导出 · onnxruntime-web (MIT)
 - 生态参考:[dsh-plugin-recall](https://github.com/truelove-dreamer/dsh-plugin-recall)(一期同构的官方 FTS 检索工具)、[dsh-mneme](https://github.com/modusensus/dsh-mneme)(本地语义记忆,混合召回降级链思路)

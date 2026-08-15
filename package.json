@@ -1,7 +1,7 @@
 {
   "name": "dsh-recall",
   "version": "0.1.0",
-  "description": "Conversation history recall for DeepSeek Harness: search the original text of every session (like searching chat records) — keyword search across all sessions, grouped results with surrounding context, for agents that lost the details to context compaction.",
+  "description": "Conversation history recall for DeepSeek Harness: search the original text of every session (like searching chat records) — literal/fuzzy/semantic retrieval, fully local & offline. AI never forgets what you told it.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -16,14 +16,22 @@
   "dsh": {
     "client": {
       "platform": "web"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
     }
   },
   "files": [
     "lib",
+    "cordis.patch.yml",
+    "assets",
     "README.md",
-    "PROJECT.md",
+    "README.zh.md",
     "LICENSE"
   ],
+  "optionalDependencies": {
+    "dsh-recall-models": "0.1.0"
+  },
   "dependencies": {
     "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
   },
@@ -37,6 +45,7 @@
     "memory",
     "history",
     "search",
+    "semantic-search",
     "cordis"
   ],
   "license": "MIT",

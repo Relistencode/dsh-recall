@@ -2,17 +2,17 @@
 
 > **AI never forgets what you told it.**
 
-A native DeepSeek Harness (DSH) plugin that gives the agent a **memory maze** — corridors and rooms built from every conversation you have had together. Every decision, setting, discussion, or casually mentioned requirement is remembered. Ask "where were we?" and it walks the maze, brings back the conversation **verbatim**, and answers as naturally as if it had never forgotten — you won't even notice it thought for a moment.
+A native [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) plugin that gives the agent a **memory maze** — corridors and rooms built from every conversation you have had together. Every decision, setting, discussion, or casually mentioned requirement is remembered. Ask "where were we?" and it walks the maze, brings back the conversation **verbatim**, and answers as naturally as if it had never forgotten — you won't even notice it thought for a moment.
 
 Conversation history recall · Three-layer retrieval (literal / fuzzy / semantic) · Fully local & offline · Compaction-proof
 
 - While searching, a quiet sweeping light appears in the corner:
 
-  ![Recalling](assets/回忆中.png)
+  ![Recalling](assets/recalling.png)
 
 - When done, no trace:
 
-  ![Recall complete](assets/回忆完成.png)
+  ![Recall complete](assets/recall-done.png)
 
 ## What it is not
 
@@ -37,7 +37,9 @@ Every recall merges the three layers automatically, ranks by relevance, and grou
 dsh plugin --profile web add dsh-recall
 ```
 
-Restart `dsh web`. Nothing else to do: the model ships with the package (~37MB full install), the index builds on first search, and semantic warm-up finishes quietly in the background (a few minutes, imperceptible to you).
+One command: the package ships its own composition patch (bundle layer), so the plugin and the search index it needs are wired up automatically. Restart `dsh web`. Nothing else to do — the model ships with the package (~37MB full install), the index builds on first search, and semantic warm-up finishes quietly in the background (a few minutes, imperceptible to you).
+
+> You can also install / disable / uninstall dsh-recall from the **Add-ons** block of the Plugin Management tab in [dsh-extension-hub](https://github.com/Relistencode/dsh-extension-hub).
 
 ### Optional configuration
 
@@ -127,7 +129,6 @@ Covers: tokenizer alignment (token-for-token against transformers.js), index inc
 
 ## References & acknowledgments
 
-- [PROJECT.md](PROJECT.md) — engineering doc, decision log, known boundaries, phase-2 plan
 - Official: `@deepseek-ai/dsh-session-query(-sqlite)`, `dsh-tools`, `dsh-session-persistence`
 - Model: BAAI/bge-small-zh-v1.5 (MIT) · onnx-community int8 export · onnxruntime-web (MIT)
 - Ecosystem: [dsh-plugin-recall](https://github.com/truelove-dreamer/dsh-plugin-recall) (official-FTS recall tool), [dsh-mneme](https://github.com/modusensus/dsh-mneme) (local semantic memory, hybrid-recall degradation ideas)

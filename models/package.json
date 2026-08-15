@@ -1,0 +1,22 @@
+{
+  "name": "dsh-recall-models",
+  "version": "0.1.0",
+  "description": "Bundled bge-small-zh-v1.5 int8 ONNX model for dsh-recall (optional dependency — omit for a lightweight build without the semantic layer).",
+  "type": "module",
+  "files": [
+    "model_merged.onnx"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "recall",
+    "embedding",
+    "onnx",
+    "bge"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Relistencode/dsh-recall.git"
+  }
+}

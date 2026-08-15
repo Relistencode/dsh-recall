@@ -1,0 +1,17 @@
+# dsh-recall bundle patch — applied automatically when the package is
+# installed with `dsh plugin --profile <name> add dsh-recall`.
+#
+# The user's own profile cordis.patch.yml is applied AFTER bundle layers and
+# wins per row, so every row here can still be overridden there.
+
+- insert:
+    - id: recall
+      name: dsh-recall
+
+# Full-text session search is opt-in in the official base layer
+# (session-query-sqlite ships with openAt: never). dsh-recall needs it;
+# the durable path is resolved through the harness home.
+- id: session-query-sqlite
+  config:
+    path: !!js dshHomePath('storages/session-search.db')
+    openAt: first-search
