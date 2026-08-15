@@ -65,6 +65,20 @@ One command: the package ships its own composition patch (bundle layer), so the 
 | Background warm-up | Worker-thread embedding (~10 texts/sec), host event loop never blocked |
 | Invisible UI | "Recalling…" sweep → one quiet "Recall complete" line; results never enter the UI, the agent presents them naturally |
 
+## Recent updates
+
+<details>
+<summary>Recent updates (click to expand)</summary>
+
+> The npm package first published as **0.1.0**; the 0.0.x entries below are development milestones.
+
+- **2026-08** — v0.1.0: first release — one-command install (`dsh.bundle.patch` wires the plugin row and enables full-text session search automatically), optional `dsh-recall-models` package for the 23.9MB embedding model (`--omit=optional` for a lightweight build), bilingual README + locale-aware UI.
+- **2026-08** — v0.0.6: semantic layer — local bge-small-zh (int8, bundled, fully offline) running in a worker thread; three-layer hybrid retrieval (literal / fuzzy / semantic) with a coverage gate (≥90%) and silent degradation; background warm-up (~10 texts/sec, host event loop never blocked).
+- **2026-08** — v0.0.4: fuzzy retrieval — self-built trigram + char-bigram index (zero npm dependencies): find conversations when you remember only fragments, rough wording, typos or missing characters.
+- **2026-08** — v0.0.2: the `recall` tool — official FTS5 full-text search over every past session (including compacted history), grouped by session with a bounded context window; scope control (current session by default); invisible UI (Recalling… / Recall complete).
+
+</details>
+
 ## How it works
 
 ```
