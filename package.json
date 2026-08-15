@@ -1,0 +1,39 @@
+{
+  "name": "dsh-recall",
+  "version": "0.1.0",
+  "description": "Conversation history recall for DeepSeek Harness: search the original text of every session (like searching chat records) — keyword search across all sessions, grouped results with surrounding context, for agents that lost the details to context compaction.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "README.md",
+    "PROJECT.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "recall",
+    "memory",
+    "history",
+    "search",
+    "cordis"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Relistencode/dsh-recall.git"
+  }
+}
