@@ -28,7 +28,7 @@ Conversely, if your sessions are short and easy to scroll, you probably don't ne
 ## Quick start
 
 ```sh
-dsh plugin --profile web add dsh-recall@0.2.0
+dsh plugin --profile web add dsh-recall@0.2.1
 ```
 
 One command: the package ships its own composition patch (bundle layer), so the plugin and the search index it needs are wired up automatically. Restart `dsh web`. Nothing else to do — the model ships with the package (~37MB full install), the index builds on first search, and semantic warm-up finishes quietly in the background (a few minutes, imperceptible to you).
@@ -83,6 +83,7 @@ Every recall merges the three layers automatically, ranks by relevance, and grou
 
 > The npm package first published as **0.1.0**; the 0.0.x entries below are development milestones.
 
+- **2026-08** — v0.2.1: fix — detail windows now extract assistant/message text blocks (block arrays) and filter by block type, so the exact original text of assistant replies appears in drill-down results (found during live verification).
 - **2026-08** — v0.2.0: **progressive disclosure + manual/automatic dual mode** — `recall` returns a light coarse recall by default (titles + snippets, far fewer tokens), with a new `detail` parameter for the second stage (a session's hit list / the exact original-text window via readEvent / paged browsing); description rewritten so the agent recalls proactively (after compaction, when details are missing — no need for the user to ask), keeping the scope red line and invisible-presentation rules; **compaction anchor** — after a compaction, one lightweight anchor (LLM summary + key original fragments, expires after 3 turns) is injected automatically, with exact text always one drill-down away.
 - **2026-08** — v0.1.0: first release — one-command install (`dsh.bundle.patch` wires the plugin row and enables full-text session search automatically), optional `dsh-recall-models` package for the 23.9MB embedding model (`--omit=optional` for a lightweight build), bilingual README + locale-aware UI.
 - **2026-08** — v0.0.6: semantic layer — local bge-small-zh (int8, bundled, fully offline) running in a worker thread; three-layer hybrid retrieval (literal / fuzzy / semantic) with a coverage gate (≥90%) and silent degradation; background warm-up (~10 texts/sec, host event loop never blocked).
