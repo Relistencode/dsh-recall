@@ -35,6 +35,15 @@ dsh plugin --profile web add dsh-recall@0.2.1
 
 > 也可以在 [dsh-extension-hub](https://github.com/Relistencode/dsh-extension-hub) 的插件管理页 **「附加功能」** 区块里一键安装/停用/卸载本插件。
 
+**从源码安装（git 克隆）：**
+
+```sh
+dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
+```
+
+仓库已跟踪模型文件（`models/model_merged.onnx`）与内置推理运行时：git 安装完全离线可用，**无构建步骤、无需 `allowBuilds` 配置**。可选依赖 `dsh-recall-models` 仍会尝试从 npm 拉取；拉取失败时自动改用仓库内模型——两种情形语义层都可用。所有路径经 `$DSH_HOME`（默认 `~/.dsh`）解析，harness 主目录在哪个位置安装效果完全一致。
+
+
 ### 可选配置
 
 ```yaml

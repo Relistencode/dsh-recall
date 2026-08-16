@@ -35,6 +35,15 @@ One command: the package ships its own composition patch (bundle layer), so the 
 
 > You can also install / disable / uninstall dsh-recall from the **Add-ons** block of the Plugin Management tab in [dsh-extension-hub](https://github.com/Relistencode/dsh-extension-hub).
 
+**Install from source (git clone):**
+
+```sh
+dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
+```
+
+The repository tracks the model (`models/model_merged.onnx`) and the vendored runtime, so a git install is fully functional offline with no build step and no `allowBuilds` entry. The optional `dsh-recall-models` dependency is still attempted from npm; if it fails to resolve, the in-repo model is used instead — either way the semantic layer works. The harness resolves all paths through `$DSH_HOME` (default `~/.dsh`), so this works identically regardless of where your harness home lives.
+
+
 ### Optional configuration
 
 ```yaml
