@@ -2,6 +2,18 @@
 
 🌏 [中文](README.zh.md) · English
 
+<div align="center">
+
+**对话历史回忆插件 —— 给 DeepSeek Harness 的 agent 一座"记忆迷宫"**
+
+[![Version](https://img.shields.io/badge/version-0.2.1-2563EB)](https://www.npmjs.com/package/dsh-recall)
+[![License](https://img.shields.io/badge/License-MIT-22C55E)](LICENSE)
+[![Node](https://img.shields.io/badge/Node-%E2%89%A522-16A34A)](package.json)
+[![Platform](https://img.shields.io/badge/DSH-web-0F172A)](https://github.com/deepseek-ai/deepseek-harness)
+[![Offline](https://img.shields.io/badge/offline-100%25-0891B2)](README.md)
+
+</div>
+
 > **AI never forgets what you told it.**
 
 A native [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) plugin that gives the agent a **memory maze** — corridors and rooms built from every conversation you have had together. Every decision, setting, discussion, or casually mentioned requirement is remembered. Ask "where were we?" and it walks the maze, brings back the conversation **verbatim**, and answers as naturally as if it had never forgotten — you won't even notice it thought for a moment.
@@ -43,7 +55,6 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 
 The repository tracks the model (`models/model_merged.onnx`) and the vendored runtime, so a git install is fully functional offline with no build step and no `allowBuilds` entry. The optional `dsh-recall-models` dependency is still attempted from npm; if it fails to resolve, the in-repo model is used instead — either way the semantic layer works. The harness resolves all paths through `$DSH_HOME` (default `~/.dsh`), so this works identically regardless of where your harness home lives.
 
-
 ### Optional configuration
 
 ```yaml
@@ -61,7 +72,34 @@ The repository tracks the model (`models/model_merged.onnx`) and the vendored ru
 - ❌ **Not a memory-document system** — no MEMORY.md or manual notes to maintain
 - ✅ It is **actual recall**: on-demand retrieval of the **original records** — including history **already compacted away** (compaction only summarizes; the original text stays searchable forever)
 
-## Three-layer retrieval
+## Capability overview
+
+| Capability | Implementation |
+|---|---|
+| Three-layer hybrid retrieval | Literal / fuzzy / semantic merged automatically with a coverage gate (≥90%) and a silent degradation chain |
+| Progressive disclosure | Light coarse recall by default (titles + snippets, ~600 tokens); `detail` drills into the original text — hit list / exact window / paged browsing |
+| Proactive recall | The agent recalls on its own when needed (after compaction, when details are missing); explicit user requests also work |
+| Compaction anchor | On `compaction/summary`, one lightweight anchor is injected automatically (summary + key original fragments, expires after 3 turns) |
+| Scope control | Current session only by default; `workspace` / `all` only on explicit user request |
+| Compaction-proof | Index covers the full history, including shadowed (compacted) events |
+| Incremental indexing | Live sessions via `ctx.sessions`, persisted via `sessionPersistence`, append-only deltas |
+| Background warm-up | Worker-thread embedding (~10 texts/sec), host event loop never blocked |
+| Invisible UI | "Recalling…" sweep → one quiet "Recall complete" line; results never enter the UI, the agent presents them naturally |
+| Fully local & offline | Zero npm runtime dependencies; no external model APIs; works with no network at all |
+
+## Architecture
+
+<img src="docs/assets/recall-architecture.svg" width="100%" alt="dsh-recall architecture: turn lifecycle on top, capability layers below">
+
+- **Turn lifecycle (top)**: one recall is a straight line — the user asks, the agent calls the `recall` tool, the three layers are searched, hits are grouped per session, and the agent receives either a light coarse recall or a drill-down window, depending on what it needs.
+- **Retrieval layer**: three independent retrieval channels (literal / fuzzy / semantic) that merge under a coverage gate (see [Three-layer hybrid retrieval](#three-layer-hybrid-retrieval)).
+- **Index & data**: everything is read through official services (`ctx.sessions` / `ctx.sessionPersistence` / `ctx.sessionQuery`) — no `.zstd` parsing, no private formats. The plugin's own `recall-index.db` (SQLite) holds the fuzzy index, the vectors and the trigram FTS.
+- **Governance & scope**: the scope red line (session by default), the coverage gate, the degradation chain, and the token budget live here.
+- **Automatic layer**: a `compaction/summary` listener that turns every compaction into one lightweight anchor, so the agent keeps its bearings after history is folded away.
+
+## Core mechanisms
+
+### Three-layer hybrid retrieval
 
 | Layer | Technique | Covers |
 |---|---|---|
@@ -69,21 +107,48 @@ The repository tracks the model (`models/model_merged.onnx`) and the vendored ru
 | Fuzzy | Self-built trigram + char-bigram index (zero dependencies) | Rough wording, remembered fragments, typos / missing chars |
 | Semantic | Local bge-small-zh model (int8, 24MB, bundled) | Paraphrase, word substitution, "roughly what it was about" |
 
-Every recall merges the three layers automatically, ranks by relevance, and groups by session. **Everything runs locally and offline** — no external model APIs.
+<img src="docs/assets/recall-retrieval.svg" width="100%" alt="Three-layer retrieval: query fans out to literal/fuzzy/semantic, merges through the coverage gate">
 
-## Feature matrix
+- The fuzzy layer is the **primary path** (it already covers the literal layer's ground with far more tolerance); the official FTS5 layer is the fallback; the semantic layer **joins the mix only when it covers ≥90% of the literal/fuzzy hits** — otherwise it stays silent rather than dragging the ranking down.
+- Any layer failure degrades silently to the layer below — semantic → fuzzy → literal, never an error. The recall tool always answers.
+- Inference runs in a **worker thread** (WASM on the main thread would block the host event loop; measured ~9.6 texts/sec with zero main-thread impact).
+- Everything runs locally and offline — no external model APIs, no network.
 
-| Capability | Description |
+### Progressive disclosure
+
+Recall happens in two stages, and the second stage only fires when the agent actually needs it:
+
+| Stage | What the agent gets | Cost |
+|---|---|---|
+| 1 — coarse recall (default) | Session titles + snippets, grouped, ranked | ~100–600 tokens for up to 10 sessions |
+| 2 — `detail` drill-down | A session's hit list / the exact original-text window (`readEvent`) / paged browsing | ~300 tokens per session (e.g. a ±3 event window) |
+
+Measured live on a real instance: coarse recall saved **~80% of tokens** versus the old full-context windows (2500–3000 → ~600 on a 10-session hit). Irrelevant content never enters the context — and when it matters, the original text is always one drill-down away.
+
+### Compaction anchors
+
+Compaction is where memories get lost — the harness summarizes, the original text is shadowed. dsh-recall listens for `compaction/summary` and immediately injects one lightweight anchor into the compacted session:
+
+- **Content**: the LLM summary + up to 3 key original fragments (user messages first, then longest text blocks).
+- **Expiry**: after 3 assemblies, the anchor disappears — it is a bearing, not a crutch.
+- **Escape hatch**: the exact original text stays one `detail` drill-down away, always.
+- Verified end-to-end on a live instance: a real `/compact` produced the anchor in the very next assembly, with the correct content, expiring automatically after 3 turns.
+
+### Scope & privacy
+
+- Default scope is the **current session only** — cross-session (`workspace`) and cross-project (`all`) searches happen only on the user's explicit request.
+- The reply layer is invisible: a quiet "Recalling…" sweep, one "Recall complete" line, nothing else. Results never enter the UI — the agent presents them naturally.
+- Data stays on this machine: no external APIs, no telemetry, no network.
+
+## Measured
+
+| Measurement | Result |
 |---|---|
-| Three-layer hybrid retrieval | Literal / fuzzy / semantic merged automatically; silent degradation chain (any failure falls back to the layer below) |
-| Progressive disclosure | Light coarse recall by default (titles + snippets, low tokens); `detail` drills into the original text — hit list / exact window / paged browsing |
-| Proactive recall | The agent recalls on its own when needed (after compaction, when details are missing) — no need for the user to ask; explicit user requests also work |
-| Compaction anchor | After a compaction, one lightweight anchor is injected automatically (summary + key original fragments, expires after 3 turns); exact text stays one drill-down away |
-| Scope control | Current session only by default; `workspace` / `all` only on explicit user request |
-| Compaction-proof | Index covers the full history, including shadowed (compacted) events |
-| Incremental indexing | Live sessions via `ctx.sessions`, persisted via `sessionPersistence`, append-only deltas |
-| Background warm-up | Worker-thread embedding (~10 texts/sec), host event loop never blocked |
-| Invisible UI | "Recalling…" sweep → one quiet "Recall complete" line; results never enter the UI, the agent presents them naturally |
+| Coarse recall cost (default) | ~100–600 tokens per call |
+| Old full-context windows (10 sessions) | ~2500–3000 tokens — **~80% more** |
+| `detail` ±3 window | ~300 tokens per session |
+| Compaction anchor | Verified live: real `/compact` → anchor injected next assembly, correct content, auto-expires after 3 turns |
+| Semantic warm-up | ~10 texts/sec in a worker thread, host event loop zero-blocked |
 
 ## Recent updates
 
@@ -101,23 +166,6 @@ Every recall merges the three layers automatically, ranks by relevance, and grou
 - **2026-08** — v0.0.2: the `recall` tool — official FTS5 full-text search over every past session (including compacted history), grouped by session with a bounded context window; scope control (current session by default); invisible UI (Recalling… / Recall complete).
 
 </details>
-
-## How it works
-
-```
-recall tool (defineTool)
-├─ Semantic: bge-small-zh int8 ONNX (23MB bundled) → worker-thread WASM inference
-│            → 512-dim cosine search, joins the mix only after ≥90% coverage
-├─ Fuzzy:    self-built SQLite trigram FTS + bigram LIKE + containment rerank (primary)
-├─ Literal:  official ctx.sessionQuery (fallback)
-├─ Stage 1 (default): mixed search → group by session → title + snippet (light coarse recall)
-└─ Stage 2 (detail):  session hit list / exact original-text window (readEvent) / paged browsing
-```
-
-- Data comes from official services (`ctx.sessions` / `ctx.sessionPersistence`) — no .zstd parsing, no private formats
-- Index & model: `~/.dsh/storages/recall-index.db`, bundled `models/`
-- Inference runs in a **worker thread** — WASM on the main thread would block the host event loop (measured: ~9.6 texts/sec with zero main-thread impact)
-- Automatic layer: listens for `compaction/summary` → injects one lightweight anchor (summary + key fragments, expires after 3 turns) into the compacted session; exact text stays one `detail` drill-down away
 
 ## Roadmap
 

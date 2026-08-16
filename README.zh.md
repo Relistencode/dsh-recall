@@ -2,6 +2,18 @@
 
 🌏 [English](README.md) · 中文
 
+<div align="center">
+
+**对话历史回忆插件 —— 给 DeepSeek Harness 的 agent 一座"记忆迷宫"**
+
+[![Version](https://img.shields.io/badge/version-0.2.1-2563EB)](https://www.npmjs.com/package/dsh-recall)
+[![License](https://img.shields.io/badge/License-MIT-22C55E)](LICENSE)
+[![Node](https://img.shields.io/badge/Node-%E2%89%A522-16A34A)](package.json)
+[![Platform](https://img.shields.io/badge/DSH-web-0F172A)](https://github.com/deepseek-ai/deepseek-harness)
+[![Offline](https://img.shields.io/badge/offline-100%25-0891B2)](README.zh.md)
+
+</div>
+
 > **AI 再也不会"忘记"你说的话了。**
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) 原生插件:给 agent 一座**记忆迷宫**——为你们的每一段对话筑起走廊与房间。它记得你们之间发生过的一切:一个决定、一条设定、一次讨论、一句随口提的需求。你问"我们上次说到哪了",它走进迷宫,把当时的对话**原样**带回,再像聊天一样自然融进回答——你甚至察觉不到它"想了一下"。
@@ -43,7 +55,6 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 
 仓库已跟踪模型文件（`models/model_merged.onnx`）与内置推理运行时：git 安装完全离线可用，**无构建步骤、无需 `allowBuilds` 配置**。可选依赖 `dsh-recall-models` 仍会尝试从 npm 拉取；拉取失败时自动改用仓库内模型——两种情形语义层都可用。所有路径经 `$DSH_HOME`（默认 `~/.dsh`）解析，harness 主目录在哪个位置安装效果完全一致。
 
-
 ### 可选配置
 
 ```yaml
@@ -61,7 +72,34 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 - ❌ **不是 memory 文档系统** —— 不需要手动维护 MEMORY.md / 备忘录
 - ✅ 是**真正的回忆能力**:按需检索对话**原始记录**——包括**已被压缩掉**的历史(压缩只是摘要,原文永远可搜)
 
-## 三层检索
+## 能力概览
+
+| 能力 | 实现 |
+|---|---|
+| 三层混合检索 | 字面 / 模糊 / 语义自动合并,覆盖率门控(≥90%)+ 静默降级链 |
+| 渐进披露 | 默认轻量粗召回(标题 + 片段,~600 tokens);需要时 `detail` 下钻原文——命中窗口 / 精确原文 / 分页翻阅 |
+| 自动调用 | agent 自主在需要时回忆(压缩后、缺细节时主动调用),无需用户开口;用户也可主动要求 |
+| 压缩锚点 | 监听 `compaction/summary`,压缩后自动注入一次轻量锚点(摘要 + 关键原文片段,3 轮过期) |
+| 作用域控制 | 默认仅当前会话;`workspace` / `all` 只在用户明确要求时使用 |
+| 压缩免疫 | 索引覆盖全量历史,含 shadowed(压缩遮蔽)事件 |
+| 增量索引 | live 会话走 `ctx.sessions`,持久化走 `sessionPersistence`,append-only 增量 |
+| 后台预热 | worker 线程嵌入(~10 条/秒),host 事件循环零阻塞 |
+| 无感知 UI | 「回忆中…」光波 → 「回忆完成」一行,结果不进 UI、由 agent 自然呈现 |
+| 完全本地离线 | 零 npm 运行时依赖;无外部模型 API;断网也能用 |
+
+## 架构
+
+<img src="docs/assets/recall-architecture.svg" width="100%" alt="dsh-recall 架构:顶部回合生命周期,下方能力层">
+
+- **回合生命周期(顶部)**:一次回忆是一条直线——用户提问、agent 调用 `recall` 工具、三层检索、命中按会话聚合、agent 按需拿到轻量粗召回或下钻窗口。
+- **检索层**:三条独立的检索通道(字面 / 模糊 / 语义),在覆盖率门控下合并(见[三层混合检索](#三层混合检索))。
+- **索引与数据**:全部走官方服务(`ctx.sessions` / `ctx.sessionPersistence` / `ctx.sessionQuery`)读取——不解析 .zstd、不碰私有格式。插件自有的 `recall-index.db`(SQLite)存放模糊索引、向量与 trigram FTS。
+- **治理与作用域**:作用域红线(默认当前会话)、覆盖率门控、降级链、token 预算都在这一层。
+- **自动层**:监听 `compaction/summary`,把每次压缩变成一条轻量锚点——历史被折叠后 agent 依然有方向感。
+
+## 核心机制
+
+### 三层混合检索
 
 | 层 | 技术 | 解决 |
 |---|---|---|
@@ -69,21 +107,48 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 | 模糊 | 自建 trigram + 字符二元组索引(零依赖) | 记不清原话、只记得片段、换字漏字 |
 | 语义 | 本地 bge-small-zh 模型(int8,24MB 预置) | 换词、意译、"大概意思"也能想起来 |
 
-每次回忆三层自动混合,按相关度排序,逐会话聚合。**全部本地运行、完全离线**,不依赖任何外部模型 API。
+<img src="docs/assets/recall-retrieval.svg" width="100%" alt="三层检索:查询扩散到字面/模糊/语义,经覆盖率门控合并">
 
-## 特性一览
+- 模糊层是**主路径**(它已覆盖字面层的能力且容错更强);官方 FTS5 是兜底;语义层**只在覆盖率 ≥90% 时才参与混合**——否则保持沉默,绝不让排序变差。
+- 任一层失败都静默降级到下一层——语义 → 模糊 → 字面,永不报错。`recall` 永远有答案。
+- 推理在 **worker 线程**运行(WASM 放主线程会阻塞 host 事件循环;实测 ~9.6 条/秒零阻塞)。
+- 全部本地运行、完全离线——无外部模型 API、无网络。
 
-| 能力 | 说明 |
+### 渐进披露
+
+回忆分两阶段,第二阶段只在 agent 真正需要时触发:
+
+| 阶段 | agent 拿到什么 | 成本 |
+|---|---|---|
+| 1 — 粗召回(默认) | 会话标题 + 片段,分组排序 | 最多 10 个会话约 **100–600 tokens** |
+| 2 — `detail` 下钻 | 会话命中列表 / 精确原文窗口(`readEvent`)/ 分页翻阅 | 约 **300 tokens/会话**(如 ±3 事件窗口) |
+
+实机实测:粗召回比旧版全量上下文窗口**省 ~80% token**(10 会话命中:2500–3000 → ~600)。无关内容从不进上下文——而需要时,原文永远一次下钻之遥。
+
+### 压缩锚点
+
+压缩是记忆最容易丢失的地方——harness 生成摘要,原文被遮蔽。dsh-recall 监听 `compaction/summary`,立即为被压缩会话注入一条轻量锚点:
+
+- **内容**:LLM 摘要 + 最多 3 条关键原文片段(优先用户消息,再取最长文本块)。
+- **过期**:3 轮组装后自动消失——它是路标,不是拐杖。
+- **逃生口**:精确原文随时 `detail` 下钻,永远可还原。
+- 实机端到端验证:真实 `/compact` 后,锚点在下一轮组装中注入,内容正确,3 轮后自动过期。
+
+### 作用域与隐私
+
+- 默认作用域是**仅当前会话**——跨会话(`workspace`)、跨项目(`all`)只在用户明确要求时使用。
+- 呈现层无感知:一声安静的「回忆中…」光波、一行「回忆完成」,别无其他。结果不进 UI——由 agent 自然呈现。
+- 数据留在本机:无外部 API、无遥测、无网络。
+
+## 实测数据
+
+| 指标 | 结果 |
 |---|---|
-| 三层混合检索 | 字面 / 模糊 / 语义自动合并,静默降级链(任一失败自动回退下层) |
-| 渐进披露 | 默认轻量粗召回(标题 + 片段,省 token);需要时 `detail` 下钻原文——命中窗口 / 精确原文 / 分页翻阅 |
-| 自动调用 | agent 自主在需要时回忆(压缩后、缺细节时主动调用),无需用户开口;用户也可主动要求 |
-| 压缩锚点 | 压缩后自动注入一次轻量锚点(摘要 + 关键原文片段,3 轮过期),细节随时可下钻 |
-| 作用域控制 | 默认仅当前会话;`workspace` / `all` 只在用户明确要求时使用 |
-| 压缩免疫 | 索引覆盖全量历史,含 shadowed(压缩遮蔽)事件 |
-| 增量索引 | live 会话走 `ctx.sessions`,持久化走 `sessionPersistence`,append-only 增量 |
-| 后台预热 | worker 线程嵌入(~10 条/秒),host 事件循环零阻塞 |
-| 无感知 UI | 「回忆中…」光波 → 「回忆完成」一行,结果不进 UI、由 agent 自然呈现 |
+| 粗召回成本(默认) | 每次调用约 100–600 tokens |
+| 旧版全量上下文窗口(10 会话) | 约 2500–3000 tokens——**多花 ~80%** |
+| `detail` ±3 窗口 | 约 300 tokens/会话 |
+| 压缩锚点 | 实机验证:真实 `/compact` → 锚点下一轮注入,内容正确,3 轮自动过期 |
+| 语义预热 | worker 线程 ~10 条/秒,host 事件循环零阻塞 |
 
 ## 更新记录
 
@@ -101,23 +166,6 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 - **2026-08** — v0.0.2：`recall` 工具——官方 FTS5 全文检索全部历史会话（含压缩掉的历史），按会话聚合 + 上下文窗口；作用域控制（默认仅当前会话）；无感知 UI（回忆中… / 回忆完成）。
 
 </details>
-
-## 工作方式
-
-```
-recall 工具 (defineTool)
-├─ 语义层: bge-small-zh int8 ONNX(23MB 预置)→ worker 线程 WASM 推理
-│          → 512 维余弦检索,覆盖率 ≥90% 门控后才参与混合
-├─ 模糊层: 自建 SQLite trigram FTS + bigram LIKE + 包含度重排(主路径)
-├─ 字面层: 官方 ctx.sessionQuery(兜底)
-├─ 第一阶段(默认): 混合检索 → 按会话聚合 → 标题 + 片段(轻量粗召回)
-└─ 第二阶段(detail 下钻): 会话命中列表 / 精确原文窗口(readEvent) / 分页翻阅(browse)
-```
-
-- 数据源走官方服务(`ctx.sessions` / `ctx.sessionPersistence`),不读 .zstd 文件、不碰私有格式
-- 索引与模型文件:`~/.dsh/storages/recall-index.db`、`models/`(随包)
-- 语义推理在 **worker 线程**运行——WASM 放主线程会阻塞 host 事件循环(实测 ~9.6 条/秒零阻塞)
-- 自动层:监听 `compaction/summary` → 为被压缩会话注入一次轻量锚点(摘要 + 关键原文片段,3 轮过期),精确原文随时经 `detail` 下钻
 
 ## Roadmap
 

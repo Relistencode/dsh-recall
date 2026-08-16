@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrUp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="600" fill="#0f172a"/>
+  <text x="24" y="28" fill="#94a3b8" font-size="13">dsh-recall — architecture &amp; data flow</text>
+
+  <!-- ── 顶部主流程 ── -->
+  <rect x="24" y="44" width="912" height="104" rx="10" fill="#1e293b" stroke="#334155"/>
+  <text x="40" y="66" fill="#94a3b8" font-size="12">Turn lifecycle — one recall, end to end</text>
+
+  <g font-size="13" fill="#e2e8f0" text-anchor="middle">
+    <rect x="40"  y="78" width="150" height="52" rx="8" fill="#0f172a" stroke="#38bdf8"/>
+    <text x="115" y="109">User question</text>
+    <rect x="224" y="78" width="150" height="52" rx="8" fill="#0f172a" stroke="#38bdf8"/>
+    <text x="299" y="109">recall tool</text>
+    <rect x="408" y="78" width="150" height="52" rx="8" fill="#0f172a" stroke="#38bdf8"/>
+    <text x="483" y="109">Hybrid retrieval</text>
+    <rect x="592" y="78" width="150" height="52" rx="8" fill="#0f172a" stroke="#38bdf8"/>
+    <text x="667" y="109">Session groups</text>
+    <rect x="776" y="78" width="150" height="52" rx="8" fill="#0f172a" stroke="#38bdf8"/>
+    <text x="851" y="103">Coarse recall</text>
+    <text x="851" y="119" font-size="11" fill="#94a3b8">/ detail drill-down</text>
+  </g>
+  <g stroke="#38bdf8" stroke-width="1.5" marker-end="url(#arr)">
+    <line x1="190" y1="104" x2="222" y2="104"/>
+    <line x1="374" y1="104" x2="406" y2="104"/>
+    <line x1="558" y1="104" x2="590" y2="104"/>
+    <line x1="742" y1="104" x2="774" y2="104"/>
+  </g>
+
+  <!-- 支撑虚线:能力层 → 主流程 -->
+  <g stroke="#475569" stroke-width="1.2" stroke-dasharray="4 4" marker-end="url(#arrUp)">
+    <line x1="172" y1="212" x2="172" y2="150"/>
+    <line x1="480" y1="212" x2="480" y2="150"/>
+    <line x1="788" y1="212" x2="788" y2="150"/>
+  </g>
+
+  <!-- ── 能力层 ── -->
+  <text x="24" y="196" fill="#94a3b8" font-size="12">Capability layers — each box supports the lifecycle above</text>
+
+  <!-- 面板1 检索层 -->
+  <rect x="24" y="212" width="296" height="252" rx="10" fill="#1e293b" stroke="#334155"/>
+  <text x="40" y="238" fill="#e2e8f0" font-size="14" font-weight="600">Retrieval layer</text>
+  <g font-size="12" fill="#cbd5e1" text-anchor="middle">
+    <rect x="36" y="250" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="172" y="272">Literal — official FTS5</text>
+    <rect x="36" y="292" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="172" y="314">Fuzzy — trigram + bigram</text>
+    <rect x="36" y="334" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="172" y="356">Semantic — bge-small-zh int8</text>
+    <rect x="36" y="376" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="172" y="398">Worker-thread WASM inference</text>
+  </g>
+
+  <!-- 面板2 索引与数据 -->
+  <rect x="332" y="212" width="296" height="252" rx="10" fill="#1e293b" stroke="#334155"/>
+  <text x="348" y="238" fill="#e2e8f0" font-size="14" font-weight="600">Index &amp; data</text>
+  <g font-size="12" fill="#cbd5e1" text-anchor="middle">
+    <rect x="344" y="250" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="480" y="272">ctx.sessionQuery (FTS5)</text>
+    <rect x="344" y="292" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="480" y="314">sessionPersistence (live)</text>
+    <rect x="344" y="334" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="480" y="356">recall-index.db (SQLite)</text>
+    <rect x="344" y="376" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="480" y="398">Append-only deltas</text>
+    <rect x="344" y="418" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="480" y="440">Shadowed events indexed</text>
+  </g>
+
+  <!-- 面板3 治理与作用域 -->
+  <rect x="640" y="212" width="296" height="252" rx="10" fill="#1e293b" stroke="#334155"/>
+  <text x="656" y="238" fill="#e2e8f0" font-size="14" font-weight="600">Governance &amp; scope</text>
+  <g font-size="12" fill="#cbd5e1" text-anchor="middle">
+    <rect x="652" y="250" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="788" y="272">Scope: session | workspace | all</text>
+    <rect x="652" y="292" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="788" y="314">Coverage gate ≥ 90%</text>
+    <rect x="652" y="334" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="788" y="356">Silent degradation chain</text>
+    <rect x="652" y="376" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="788" y="398">Token budget (coarse ≈ 600)</text>
+    <rect x="652" y="418" width="272" height="34" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="788" y="440">Anchor expiry after 3 turns</text>
+  </g>
+
+  <!-- ── 自动层 ── -->
+  <rect x="24" y="484" width="912" height="88" rx="10" fill="#1e293b" stroke="#334155"/>
+  <text x="40" y="508" fill="#e2e8f0" font-size="14" font-weight="600">Automatic layer — compaction-aware</text>
+  <text x="40" y="532" fill="#cbd5e1" font-size="12">Listens for compaction/summary → injects one lightweight anchor into the compacted session</text>
+  <text x="40" y="552" fill="#94a3b8" font-size="12">LLM summary + up to 3 key original fragments · expires after 3 assemblies · exact text one detail away</text>
+
+  <text x="480" y="592" fill="#64748b" font-size="11" text-anchor="middle">Fully local &amp; offline · zero npm runtime dependencies · no external model APIs</text>
+</svg>
