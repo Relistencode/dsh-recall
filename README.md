@@ -28,7 +28,7 @@ Conversely, if your sessions are short and easy to scroll, you probably don't ne
 ## Quick start
 
 ```sh
-dsh plugin --profile web add dsh-recall@0.1.0
+dsh plugin --profile web add dsh-recall@0.2.0
 ```
 
 One command: the package ships its own composition patch (bundle layer), so the plugin and the search index it needs are wired up automatically. Restart `dsh web`. Nothing else to do — the model ships with the package (~37MB full install), the index builds on first search, and semantic warm-up finishes quietly in the background (a few minutes, imperceptible to you).
@@ -67,8 +67,10 @@ Every recall merges the three layers automatically, ranks by relevance, and grou
 | Capability | Description |
 |---|---|
 | Three-layer hybrid retrieval | Literal / fuzzy / semantic merged automatically; silent degradation chain (any failure falls back to the layer below) |
+| Progressive disclosure | Light coarse recall by default (titles + snippets, low tokens); `detail` drills into the original text — hit list / exact window / paged browsing |
+| Proactive recall | The agent recalls on its own when needed (after compaction, when details are missing) — no need for the user to ask; explicit user requests also work |
+| Compaction anchor | After a compaction, one lightweight anchor is injected automatically (summary + key original fragments, expires after 3 turns); exact text stays one drill-down away |
 | Scope control | Current session only by default; `workspace` / `all` only on explicit user request |
-| Context window | ±N original messages around every hit (configurable, default 3) |
 | Compaction-proof | Index covers the full history, including shadowed (compacted) events |
 | Incremental indexing | Live sessions via `ctx.sessions`, persisted via `sessionPersistence`, append-only deltas |
 | Background warm-up | Worker-thread embedding (~10 texts/sec), host event loop never blocked |
@@ -81,6 +83,7 @@ Every recall merges the three layers automatically, ranks by relevance, and grou
 
 > The npm package first published as **0.1.0**; the 0.0.x entries below are development milestones.
 
+- **2026-08** — v0.2.0: **progressive disclosure + manual/automatic dual mode** — `recall` returns a light coarse recall by default (titles + snippets, far fewer tokens), with a new `detail` parameter for the second stage (a session's hit list / the exact original-text window via readEvent / paged browsing); description rewritten so the agent recalls proactively (after compaction, when details are missing — no need for the user to ask), keeping the scope red line and invisible-presentation rules; **compaction anchor** — after a compaction, one lightweight anchor (LLM summary + key original fragments, expires after 3 turns) is injected automatically, with exact text always one drill-down away.
 - **2026-08** — v0.1.0: first release — one-command install (`dsh.bundle.patch` wires the plugin row and enables full-text session search automatically), optional `dsh-recall-models` package for the 23.9MB embedding model (`--omit=optional` for a lightweight build), bilingual README + locale-aware UI.
 - **2026-08** — v0.0.6: semantic layer — local bge-small-zh (int8, bundled, fully offline) running in a worker thread; three-layer hybrid retrieval (literal / fuzzy / semantic) with a coverage gate (≥90%) and silent degradation; background warm-up (~10 texts/sec, host event loop never blocked).
 - **2026-08** — v0.0.4: fuzzy retrieval — self-built trigram + char-bigram index (zero npm dependencies): find conversations when you remember only fragments, rough wording, typos or missing characters.
@@ -96,23 +99,25 @@ recall tool (defineTool)
 │            → 512-dim cosine search, joins the mix only after ≥90% coverage
 ├─ Fuzzy:    self-built SQLite trigram FTS + bigram LIKE + containment rerank (primary)
 ├─ Literal:  official ctx.sessionQuery (fallback)
-└─ Mix:      semantic ∪ fuzzy, best score per doc → group by session → title + context window
+├─ Stage 1 (default): mixed search → group by session → title + snippet (light coarse recall)
+└─ Stage 2 (detail):  session hit list / exact original-text window (readEvent) / paged browsing
 ```
 
 - Data comes from official services (`ctx.sessions` / `ctx.sessionPersistence`) — no .zstd parsing, no private formats
 - Index & model: `~/.dsh/storages/recall-index.db`, bundled `models/`
 - Inference runs in a **worker thread** — WASM on the main thread would block the host event loop (measured: ~9.6 texts/sec with zero main-thread impact)
+- Automatic layer: listens for `compaction/summary` → injects one lightweight anchor (summary + key fragments, expires after 3 turns) into the compacted session; exact text stays one `detail` drill-down away
 
 ## Roadmap
 
-**v1 · Now** — Three-layer hybrid retrieval: official FTS5 literal / self-built trigram+bigram fuzzy / local bge embedding semantic; coverage gate, background warm-up, silent degradation chain.
+**v1 · Done** — Three-layer hybrid retrieval: official FTS5 literal / self-built trigram+bigram fuzzy / local bge embedding semantic; coverage gate, background warm-up, silent degradation chain.
 
 **v2 · Retrieval control**
-- **`browse` mode**: read a full session forward from a hit event (paginated) — turn "recall" into "scrolling the chat log"
-- **Two-stage recall**: lightweight coarse recall by default (title + snippet, ~600 tokens); the agent picks the relevant sessions and requests full context on demand — irrelevant content never enters the context
-- **Time-range filters**: constrain retrieval by message time windows
-- **Result aggregation**: merge repeated mentions of one topic into a complete "episode" instead of scattered hits
-- **Compaction anchors**: subscribe to `compaction/summary` log events, register summaries as searchable anchors, restore originals via `shadowedSeqs`
+- [x] **Two-stage recall (browse/detail drill-down)**: lightweight coarse recall by default (title + snippet, ~600 tokens); the agent picks the relevant sessions and requests full context on demand — irrelevant content never enters the context
+- [x] **Compaction anchors**: on `compaction/summary`, inject one lightweight anchor (summary + key fragments) automatically; the original text stays one drill-down away
+- [x] **Proactive recall**: the agent calls on its own when needed (after compaction, when details are missing); explicit user requests also work
+- [ ] **Result aggregation**: merge repeated mentions of one topic into a complete "episode" instead of scattered hits
+- ~~Time-range filters~~ (user decision: rarely needed in development workflows, dropped)
 
 **v3 · Memory organization**
 - **Topic clustering**: embed similarity clustering, present results grouped by topic
