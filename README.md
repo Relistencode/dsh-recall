@@ -16,22 +16,14 @@ Conversation history recall · Three-layer retrieval (literal / fuzzy / semantic
 
   ![Recall complete](assets/recall-done.png)
 
-## What it is not
+## Who is it for
 
-- ❌ **Not context engineering** — it does not cram history into the model window
-- ❌ **Not prompt engineering** — it does not rely on prompts to make the model "pretend to remember"
-- ❌ **Not a memory-document system** — no MEMORY.md or manual notes to maintain
-- ✅ It is **actual recall**: on-demand retrieval of the **original records** — including history **already compacted away** (compaction only summarizes; the original text stays searchable forever)
+- **Heavy users of long sessions** — conversations spanning days and hundreds of turns, too long to scroll back through
+- **Writers / RP / tavern players** — settings, foreshadowing, and character relationships scattered across months of chat
+- **Code & doc maintainers** — the reasoning behind past decisions and pitfalls, now reduced to a one-line summary
+- **Anyone who has said "didn't we discuss this before?"** — it brings back the original words instead of making you retell them
 
-## Three-layer retrieval
-
-| Layer | Technique | Covers |
-|---|---|---|
-| Literal | Official FTS5 full-text index | Exact keyword matches |
-| Fuzzy | Self-built trigram + char-bigram index (zero dependencies) | Rough wording, remembered fragments, typos / missing chars |
-| Semantic | Local bge-small-zh model (int8, 24MB, bundled) | Paraphrase, word substitution, "roughly what it was about" |
-
-Every recall merges the three layers automatically, ranks by relevance, and groups by session. **Everything runs locally and offline** — no external model APIs.
+Conversely, if your sessions are short and easy to scroll, you probably don't need it — it is built for "history too long, memory compacted" scenarios.
 
 ## Quick start
 
@@ -52,6 +44,23 @@ One command: the package ships its own composition patch (bundle layer), so the 
     semantic: false   # disable the semantic layer (literal + fuzzy only, smaller package)
     warmup: gentle    # slower warm-up, lower background CPU (only during warm-up; zero afterwards)
 ```
+
+## What it is not
+
+- ❌ **Not context engineering** — it does not cram history into the model window
+- ❌ **Not prompt engineering** — it does not rely on prompts to make the model "pretend to remember"
+- ❌ **Not a memory-document system** — no MEMORY.md or manual notes to maintain
+- ✅ It is **actual recall**: on-demand retrieval of the **original records** — including history **already compacted away** (compaction only summarizes; the original text stays searchable forever)
+
+## Three-layer retrieval
+
+| Layer | Technique | Covers |
+|---|---|---|
+| Literal | Official FTS5 full-text index | Exact keyword matches |
+| Fuzzy | Self-built trigram + char-bigram index (zero dependencies) | Rough wording, remembered fragments, typos / missing chars |
+| Semantic | Local bge-small-zh model (int8, 24MB, bundled) | Paraphrase, word substitution, "roughly what it was about" |
+
+Every recall merges the three layers automatically, ranks by relevance, and groups by session. **Everything runs locally and offline** — no external model APIs.
 
 ## Feature matrix
 
