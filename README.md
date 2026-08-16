@@ -50,7 +50,7 @@ One command: the package ships its own composition patch (bundle layer), so the 
   name: dsh-recall
   config:
     semantic: false   # disable the semantic layer (literal + fuzzy only, smaller package)
-    warmup: gentle    # slower warm-up, lower background CPU (takes longer to be ready)
+    warmup: gentle    # slower warm-up, lower background CPU (only during warm-up; zero afterwards)
 ```
 
 ## Feature matrix

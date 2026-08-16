@@ -50,7 +50,7 @@ dsh plugin --profile web add dsh-recall
   name: dsh-recall
   config:
     semantic: false   # 关闭语义层(只保留字面 + 模糊,包体更小)
-    warmup: gentle    # 慢速预热,降低后台 CPU 占用(就绪更慢)
+    warmup: gentle    # 慢速预热,降低后台 CPU 占用(仅预热期间占用,后续使用 0 占用)
 ```
 
 ## 特性一览
