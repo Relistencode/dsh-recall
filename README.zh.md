@@ -10,7 +10,7 @@
 [![License](https://img.shields.io/badge/License-MIT-22C55E)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522-16A34A)](package.json)
 [![Platform](https://img.shields.io/badge/DSH-web-0F172A)](https://github.com/deepseek-ai/deepseek-harness)
-[![Offline](https://img.shields.io/badge/offline-100%25-0891B2)](README.zh.md)
+[![Offline](https://img.shields.io/badge/offline-100%25-0891B2)
 
 </div>
 
@@ -77,7 +77,7 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 | 能力 | 实现 |
 |---|---|
 | 三层混合检索 | 字面 / 模糊 / 语义自动合并,覆盖率门控(≥90%)+ 静默降级链 |
-| 渐进披露 | 默认轻量粗召回(标题 + 片段,~600 tokens);需要时 `detail` 下钻原文——命中窗口 / 精确原文 / 分页翻阅 |
+| 渐进披露 | 默认轻量粗召回(标题 + 片段 + 事件,约 100–800 tokens);需要时 `detail` 下钻原文——命中窗口 / 精确原文 / 分页翻阅 |
 | 事件聚合 | 同一主题的多次提及合并为事件(`[startSeq..endSeq]`,文本块间隔 ≤5)——一次拿到完整片段集,而非零散碎片;事件全文仍是一次 `detail` 下钻之遥 |
 | 自动调用 | agent 自主在需要时回忆(压缩后、缺细节时主动调用),无需用户开口;用户也可主动要求 |
 | 压缩锚点 | 监听 `compaction/summary`,压缩后自动注入一次轻量锚点(摘要 + 关键原文片段,3 轮过期) |
@@ -92,7 +92,7 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 
 <img src="docs/assets/recall-architecture.svg" width="100%" alt="dsh-recall 架构:顶部回合生命周期,下方能力层">
 
-- **回合生命周期(顶部)**:一次回忆是一条直线——用户提问、agent 调用 `recall` 工具、三层检索、命中按会话聚合、agent 按需拿到轻量粗召回或下钻窗口。
+- **回合生命周期(顶部)**:一次回忆是一条直线——用户提问、agent 调用 `recall` 工具、三层检索、命中按会话聚合成事件、agent 按需拿到轻量粗召回或下钻窗口。
 - **检索层**:三条独立的检索通道(字面 / 模糊 / 语义),在覆盖率门控下合并(见[三层混合检索](#三层混合检索))。
 - **索引与数据**:全部走官方服务(`ctx.sessions` / `ctx.sessionPersistence` / `ctx.sessionQuery`)读取——不解析 .zstd、不碰私有格式。插件自有的 `recall-index.db`(SQLite)存放模糊索引、向量与 trigram FTS。
 - **治理与作用域**:作用域红线(默认当前会话)、覆盖率门控、降级链、token 预算都在这一层。
@@ -121,10 +121,10 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 
 | 阶段 | agent 拿到什么 | 成本 |
 |---|---|---|
-| 1 — 粗召回(默认) | 会话标题 + 片段,分组排序 | 最多 10 个会话约 **100–600 tokens** |
+| 1 — 粗召回(默认) | 会话标题 + 片段 + 同主题事件,分组排序 | 最多 10 个会话约 **100–800 tokens** |
 | 2 — `detail` 下钻 | 会话命中列表 / 精确原文窗口(`readEvent`)/ 分页翻阅 | 约 **300 tokens/会话**(如 ±3 事件窗口) |
 
-实机实测:粗召回比旧版全量上下文窗口**省 ~80% token**(10 会话命中:2500–3000 → ~600)。无关内容从不进上下文——而需要时,原文永远一次下钻之遥。
+实机实测:粗召回比旧版全量上下文窗口**省 ~80% token**(10 会话命中:2500–3000 → ~600,聚合前)。事件聚合保持同样的纪律——只带片段,事件全文一次下钻之遥——粗召回单次仍在 ~800 tokens 以内。无关内容从不进上下文——而需要时,原文永远一次下钻之遥。
 
 ### 压缩锚点
 
@@ -147,8 +147,8 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 
 | 指标 | 结果 |
 |---|---|
-| 粗召回成本(默认) | 每次调用约 100–600 tokens |
-| 旧版全量上下文窗口(10 会话) | 约 2500–3000 tokens——**多花 ~80%** |
+| 粗召回成本(默认) | 每次调用约 100–800 tokens |
+| 旧版全量上下文窗口(10 会话) | 约 2500–3000 tokens——**多花 3–4 倍** |
 | `detail` ±3 窗口 | 约 300 tokens/会话 |
 | 压缩锚点 | 实机验证:真实 `/compact` → 锚点下一轮注入,内容正确,3 轮自动过期 |
 | 语义预热 | worker 线程 ~10 条/秒,host 事件循环零阻塞 |
@@ -194,11 +194,10 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 **v1 · 完成** — 三层混合检索:官方 FTS5 字面 / 自建 trigram+bigram 模糊 / 本地 bge embedding 语义;覆盖率门控、后台预热、静默降级链。
 
 **v2 · 检索控制**
-- [x] **两阶段召回(browse/detail 下钻)**:默认轻量粗召回(标题 + 摘要,~600 tokens),agent 选定会话后按需精读完整上下文——无用信息不进上下文
+- [x] **两阶段召回(browse/detail 下钻)**:默认轻量粗召回(标题 + 摘要,约 100–800 tokens),agent 选定会话后按需精读完整上下文——无用信息不进上下文
 - [x] **压缩锚点**:监听 `compaction/summary`,压缩后自动注入一次轻量锚点(摘要 + 关键原文片段),原文随时可下钻还原
 - [x] **自动调用**:agent 自主在需要时调用(压缩后、缺细节时),无需用户开口;用户也可主动要求
 - [x] **结果聚合**:同一主题的多次提及合并为完整"事件"——文本块间隔 ≤5 的连续命中归并为 `[startSeq..endSeq]` 事件(阈值基于真实索引实测:p50 同主题间隔 3,61% ≤5);事件全文仍是一次 `detail` 下钻之遥
-- ~~时间范围过滤~~(用户决策:开发场景少用,不做)
 
 **v3 · 记忆组织**
 - **主题聚类**:embedding 相似度聚类,按话题归拢呈现
@@ -214,17 +213,17 @@ dsh plugin --profile web add git+https://github.com/Relistencode/dsh-recall.git
 ## 开发与测试
 
 ```sh
-node .smoke-recall.mjs      # 单元 + 集成(mock,无需模型)—— 60+ 断言
+node .smoke-recall.mjs      # 单元 + 集成(mock,无需模型)—— 90+ 断言
 node .smoke-semantic.mjs    # 真模型集成(需 models/ 就位)
 ```
 
-覆盖:tokenizer 对拍(与 transformers.js 逐 token 一致)、索引增量、作用域、混合排序、降级、预热。
+覆盖:tokenizer 对拍(与 transformers.js 逐 token 一致)、索引增量、作用域、混合排序、降级、预热、事件聚合。
 
 ### 模块
 
 | 文件 | 职责 |
 |---|---|
-| `lib/index.js` | 工具注册、作用域解析、混合排序、会话聚合、预热调度 |
+| `lib/index.js` | 工具注册、作用域解析、混合排序、会话与事件聚合、预热调度 |
 | `lib/fuzzy-index.js` | 自建 SQLite 索引(trigram FTS + bigram + 向量表),零 npm 依赖 |
 | `lib/tokenizer.js` | BERT WordPiece 分词器(纯 JS,与官方实现逐 token 对拍一致) |
 | `lib/semantic.js` | Embedder:worker 线程、批量嵌入、懒加载 |

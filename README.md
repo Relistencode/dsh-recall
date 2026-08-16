@@ -4,13 +4,13 @@
 
 <div align="center">
 
-**对话历史回忆插件 —— 给 DeepSeek Harness 的 agent 一座"记忆迷宫"**
+**Conversation history recall plugin — a "memory maze" for your DeepSeek Harness agent**
 
 [![Version](https://img.shields.io/badge/version-0.2.1-2563EB)](https://www.npmjs.com/package/dsh-recall)
 [![License](https://img.shields.io/badge/License-MIT-22C55E)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522-16A34A)](package.json)
 [![Platform](https://img.shields.io/badge/DSH-web-0F172A)](https://github.com/deepseek-ai/deepseek-harness)
-[![Offline](https://img.shields.io/badge/offline-100%25-0891B2)](README.md)
+[![Offline](https://img.shields.io/badge/offline-100%25-0891B2)
 
 </div>
 
@@ -77,7 +77,7 @@ The repository tracks the model (`models/model_merged.onnx`) and the vendored ru
 | Capability | Implementation |
 |---|---|
 | Three-layer hybrid retrieval | Literal / fuzzy / semantic merged automatically with a coverage gate (≥90%) and a silent degradation chain |
-| Progressive disclosure | Light coarse recall by default (titles + snippets, ~600 tokens); `detail` drills into the original text — hit list / exact window / paged browsing |
+| Progressive disclosure | Light coarse recall by default (titles + snippets + events, ~100–800 tokens); `detail` drills into the original text — hit list / exact window / paged browsing |
 | Event aggregation | Repeated mentions of one topic merge into events (`[startSeq..endSeq]`, ≤5 text blocks apart) — one complete episode instead of scattered fragments; the full event text is one `detail` browse away |
 | Proactive recall | The agent recalls on its own when needed (after compaction, when details are missing); explicit user requests also work |
 | Compaction anchor | On `compaction/summary`, one lightweight anchor is injected automatically (summary + key original fragments, expires after 3 turns) |
@@ -92,7 +92,7 @@ The repository tracks the model (`models/model_merged.onnx`) and the vendored ru
 
 <img src="docs/assets/recall-architecture.svg" width="100%" alt="dsh-recall architecture: turn lifecycle on top, capability layers below">
 
-- **Turn lifecycle (top)**: one recall is a straight line — the user asks, the agent calls the `recall` tool, the three layers are searched, hits are grouped per session, and the agent receives either a light coarse recall or a drill-down window, depending on what it needs.
+- **Turn lifecycle (top)**: one recall is a straight line — the user asks, the agent calls the `recall` tool, the three layers are searched, hits are grouped into events per session, and the agent receives either a light coarse recall or a drill-down window, depending on what it needs.
 - **Retrieval layer**: three independent retrieval channels (literal / fuzzy / semantic) that merge under a coverage gate (see [Three-layer hybrid retrieval](#three-layer-hybrid-retrieval)).
 - **Index & data**: everything is read through official services (`ctx.sessions` / `ctx.sessionPersistence` / `ctx.sessionQuery`) — no `.zstd` parsing, no private formats. The plugin's own `recall-index.db` (SQLite) holds the fuzzy index, the vectors and the trigram FTS.
 - **Governance & scope**: the scope red line (session by default), the coverage gate, the degradation chain, and the token budget live here.
@@ -121,10 +121,10 @@ Recall happens in two stages, and the second stage only fires when the agent act
 
 | Stage | What the agent gets | Cost |
 |---|---|---|
-| 1 — coarse recall (default) | Session titles + snippets, grouped, ranked | ~100–600 tokens for up to 10 sessions |
+| 1 — coarse recall (default) | Session titles + snippets + same-topic events, grouped, ranked | ~100–800 tokens for up to 10 sessions |
 | 2 — `detail` drill-down | A session's hit list / the exact original-text window (`readEvent`) / paged browsing | ~300 tokens per session (e.g. a ±3 event window) |
 
-Measured live on a real instance: coarse recall saved **~80% of tokens** versus the old full-context windows (2500–3000 → ~600 on a 10-session hit). Irrelevant content never enters the context — and when it matters, the original text is always one drill-down away.
+Measured live on a real instance: coarse recall saved **~80% of tokens** versus the old full-context windows (2500–3000 → ~600 on a 10-session hit, pre-aggregation). Event aggregation keeps the same discipline — snippets only, full event text one drill-down away — so a coarse call stays under ~800 tokens. Irrelevant content never enters the context — and when it matters, the original text is always one drill-down away.
 
 ### Compaction anchors
 
@@ -147,8 +147,8 @@ Compaction is where memories get lost — the harness summarizes, the original t
 
 | Measurement | Result |
 |---|---|
-| Coarse recall cost (default) | ~100–600 tokens per call |
-| Old full-context windows (10 sessions) | ~2500–3000 tokens — **~80% more** |
+| Coarse recall cost (default) | ~100–800 tokens per call |
+| Old full-context windows (10 sessions) | ~2500–3000 tokens — **3–4× more** |
 | `detail` ±3 window | ~300 tokens per session |
 | Compaction anchor | Verified live: real `/compact` → anchor injected next assembly, correct content, auto-expires after 3 turns |
 | Semantic warm-up | ~10 texts/sec in a worker thread, host event loop zero-blocked |
@@ -194,11 +194,10 @@ Synthetic 4-session corpus (32 docs) with 23 hand-annotated queries (exact / fuz
 **v1 · Done** — Three-layer hybrid retrieval: official FTS5 literal / self-built trigram+bigram fuzzy / local bge embedding semantic; coverage gate, background warm-up, silent degradation chain.
 
 **v2 · Retrieval control**
-- [x] **Two-stage recall (browse/detail drill-down)**: lightweight coarse recall by default (title + snippet, ~600 tokens); the agent picks the relevant sessions and requests full context on demand — irrelevant content never enters the context
+- [x] **Two-stage recall (browse/detail drill-down)**: lightweight coarse recall by default (title + snippet, ~100–800 tokens); the agent picks the relevant sessions and requests full context on demand — irrelevant content never enters the context
 - [x] **Compaction anchors**: on `compaction/summary`, inject one lightweight anchor (summary + key fragments) automatically; the original text stays one drill-down away
 - [x] **Proactive recall**: the agent calls on its own when needed (after compaction, when details are missing); explicit user requests also work
 - [x] **Result aggregation**: repeated mentions of one topic merge into complete "episodes" — consecutive hits ≤5 text blocks apart group into `[startSeq..endSeq]` events (threshold measured on real data: p50 same-topic gap = 3, 61% ≤ 5); the full event text stays one `detail` browse away
-- ~~Time-range filters~~ (user decision: rarely needed in development workflows, dropped)
 
 **v3 · Memory organization**
 - **Topic clustering**: embed similarity clustering, present results grouped by topic
@@ -214,17 +213,17 @@ Synthetic 4-session corpus (32 docs) with 23 hand-annotated queries (exact / fuz
 ## Development & testing
 
 ```sh
-node .smoke-recall.mjs      # unit + integration (mocked, no model needed) — 60+ assertions
+node .smoke-recall.mjs      # unit + integration (mocked, no model needed) — 90+ assertions
 node .smoke-semantic.mjs    # real-model integration (requires models/ present)
 ```
 
-Covers: tokenizer alignment (token-for-token against transformers.js), index increments, scoping, hybrid ranking, degradation, warm-up.
+Covers: tokenizer alignment (token-for-token against transformers.js), index increments, scoping, hybrid ranking, degradation, warm-up, event aggregation.
 
 ### Modules
 
 | File | Responsibility |
 |---|---|
-| `lib/index.js` | Tool registration, scope resolution, hybrid ranking, session aggregation, warm-up scheduling |
+| `lib/index.js` | Tool registration, scope resolution, hybrid ranking, session & event aggregation, warm-up scheduling |
 | `lib/fuzzy-index.js` | Self-built SQLite index (trigram FTS + bigram + vector table), zero npm dependencies |
 | `lib/tokenizer.js` | BERT WordPiece tokenizer (pure JS, token-for-token aligned with the reference) |
 | `lib/semantic.js` | Embedder: worker thread, batched embedding, lazy loading |
