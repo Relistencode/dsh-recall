@@ -78,6 +78,7 @@ The repository tracks the model (`models/model_merged.onnx`) and the vendored ru
 |---|---|
 | Three-layer hybrid retrieval | Literal / fuzzy / semantic merged automatically with a coverage gate (≥90%) and a silent degradation chain |
 | Progressive disclosure | Light coarse recall by default (titles + snippets, ~600 tokens); `detail` drills into the original text — hit list / exact window / paged browsing |
+| Event aggregation | Repeated mentions of one topic merge into events (`[startSeq..endSeq]`, ≤5 text blocks apart) — one complete episode instead of scattered fragments; the full event text is one `detail` browse away |
 | Proactive recall | The agent recalls on its own when needed (after compaction, when details are missing); explicit user requests also work |
 | Compaction anchor | On `compaction/summary`, one lightweight anchor is injected automatically (summary + key original fragments, expires after 3 turns) |
 | Scope control | Current session only by default; `workspace` / `all` only on explicit user request |
@@ -176,6 +177,7 @@ Synthetic 4-session corpus (32 docs) with 23 hand-annotated queries (exact / fuz
 
 > The npm package first published as **0.1.0**; the 0.0.x entries below are development milestones.
 
+- **2026-08** — **Result aggregation**: repeated mentions of one topic now merge into complete events (`[startSeq..endSeq]`, hits ≤5 text blocks apart; threshold measured on real index data — p50 same-topic gap 3, 61% ≤5). Coarse recall returns up to 3 events per session with the same token discipline (snippets only; full event text stays one `detail` browse away). v2 roadmap complete.
 - **2026-08** — Retrieval quality evaluation: golden set (4 sessions / 32 docs / 23 hand-annotated queries) measures the production hybrid path at recall@5 **0.696** / MRR **0.761** / nDCG@10 **0.687** — +19% over the best single layer. Ablation confirms fuzzy-as-primary and literal-as-fallback; the coverage gate is verified live (half warm-up falls back to fuzzy-only). Repro: `node eval/run-golden.mjs`.
 - **2026-08** — Measured live on v0.2.1: coarse recall costs ~100–600 tokens vs ~2500–3000 for the old full-context windows on a 10-session hit (~80% saved); a `detail` ±3 window costs ~300 tokens per session. Compaction anchor verified end-to-end: a real `/compact` injected the LLM summary + 3 key original fragments into the next assembly on a live instance, expiring automatically after 3 turns.
 - **2026-08** — v0.2.1: fix — detail windows now extract assistant/message text blocks (block arrays) and filter by block type, so the exact original text of assistant replies appears in drill-down results (found during live verification).
@@ -195,7 +197,7 @@ Synthetic 4-session corpus (32 docs) with 23 hand-annotated queries (exact / fuz
 - [x] **Two-stage recall (browse/detail drill-down)**: lightweight coarse recall by default (title + snippet, ~600 tokens); the agent picks the relevant sessions and requests full context on demand — irrelevant content never enters the context
 - [x] **Compaction anchors**: on `compaction/summary`, inject one lightweight anchor (summary + key fragments) automatically; the original text stays one drill-down away
 - [x] **Proactive recall**: the agent calls on its own when needed (after compaction, when details are missing); explicit user requests also work
-- [ ] **Result aggregation**: merge repeated mentions of one topic into a complete "episode" instead of scattered hits
+- [x] **Result aggregation**: repeated mentions of one topic merge into complete "episodes" — consecutive hits ≤5 text blocks apart group into `[startSeq..endSeq]` events (threshold measured on real data: p50 same-topic gap = 3, 61% ≤ 5); the full event text stays one `detail` browse away
 - ~~Time-range filters~~ (user decision: rarely needed in development workflows, dropped)
 
 **v3 · Memory organization**
