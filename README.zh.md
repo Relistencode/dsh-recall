@@ -28,7 +28,7 @@
 ## 快速开始
 
 ```sh
-dsh plugin --profile web add dsh-recall
+dsh plugin --profile web add dsh-recall@0.1.0
 ```
 
 **一条命令即可**:包自带组合补丁(bundle 层),插件与它所需的全文搜索会自动接线。重启 `dsh web` 即可。没有额外步骤:模型随包预置(完整版约 37MB),首次搜索自动建立索引,随后在后台安静完成语义预热(几分钟,对你的使用无感知)。

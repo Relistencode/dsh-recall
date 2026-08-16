@@ -28,7 +28,7 @@ Conversely, if your sessions are short and easy to scroll, you probably don't ne
 ## Quick start
 
 ```sh
-dsh plugin --profile web add dsh-recall
+dsh plugin --profile web add dsh-recall@0.1.0
 ```
 
 One command: the package ships its own composition patch (bundle layer), so the plugin and the search index it needs are wired up automatically. Restart `dsh web`. Nothing else to do — the model ships with the package (~37MB full install), the index builds on first search, and semantic warm-up finishes quietly in the background (a few minutes, imperceptible to you).
