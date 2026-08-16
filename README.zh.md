@@ -6,7 +6,7 @@
 
 **对话历史回忆插件 —— 给 DeepSeek Harness 的 agent 一座"记忆迷宫"**
 
-[![Version](https://img.shields.io/badge/version-0.2.1-2563EB)](https://www.npmjs.com/package/dsh-recall)
+[![Version](https://img.shields.io/badge/version-0.2.2-2563EB)](https://www.npmjs.com/package/dsh-recall)
 [![License](https://img.shields.io/badge/License-MIT-22C55E)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522-16A34A)](package.json)
 [![Platform](https://img.shields.io/badge/DSH-web-0F172A)](https://github.com/deepseek-ai/deepseek-harness)
@@ -40,7 +40,7 @@
 ## 快速开始
 
 ```sh
-dsh plugin --profile web add dsh-recall@0.2.1
+dsh plugin --profile web add dsh-recall@0.2.2
 ```
 
 **一条命令即可**:包自带组合补丁(bundle 层),插件与它所需的全文搜索会自动接线。重启 `dsh web` 即可。没有额外步骤:模型随包预置(完整版约 37MB),首次搜索自动建立索引,随后在后台安静完成语义预热(几分钟,对你的使用无感知)。

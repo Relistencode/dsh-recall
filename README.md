@@ -6,7 +6,7 @@
 
 **Conversation history recall plugin — a "memory maze" for your DeepSeek Harness agent**
 
-[![Version](https://img.shields.io/badge/version-0.2.1-2563EB)](https://www.npmjs.com/package/dsh-recall)
+[![Version](https://img.shields.io/badge/version-0.2.2-2563EB)](https://www.npmjs.com/package/dsh-recall)
 [![License](https://img.shields.io/badge/License-MIT-22C55E)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522-16A34A)](package.json)
 [![Platform](https://img.shields.io/badge/DSH-web-0F172A)](https://github.com/deepseek-ai/deepseek-harness)
@@ -40,7 +40,7 @@ Conversely, if your sessions are short and easy to scroll, you probably don't ne
 ## Quick start
 
 ```sh
-dsh plugin --profile web add dsh-recall@0.2.1
+dsh plugin --profile web add dsh-recall@0.2.2
 ```
 
 One command: the package ships its own composition patch (bundle layer), so the plugin and the search index it needs are wired up automatically. Restart `dsh web`. Nothing else to do — the model ships with the package (~37MB full install), the index builds on first search, and semantic warm-up finishes quietly in the background (a few minutes, imperceptible to you).
