@@ -142,6 +142,8 @@ Compaction is where memories get lost — the harness summarizes, the original t
 
 ## Measured
 
+### Token benefit (live, v0.2.1)
+
 | Measurement | Result |
 |---|---|
 | Coarse recall cost (default) | ~100–600 tokens per call |
@@ -150,6 +152,23 @@ Compaction is where memories get lost — the harness summarizes, the original t
 | Compaction anchor | Verified live: real `/compact` → anchor injected next assembly, correct content, auto-expires after 3 turns |
 | Semantic warm-up | ~10 texts/sec in a worker thread, host event loop zero-blocked |
 
+### Retrieval quality (golden set)
+
+Synthetic 4-session corpus (32 docs) with 23 hand-annotated queries (exact / fuzzy-typo / paraphrase / cross-session), run in-memory with the real model — repro: `node eval/run-golden.mjs`:
+
+| Variant | recall@5 | MRR | nDCG@10 |
+|---|---|---|---|
+| Literal only (simulated official FTS5) | 0.196 | 0.217 | 0.201 |
+| Fuzzy only | 0.587 | 0.652 | 0.579 |
+| Semantic only | 0.533 | 0.609 | 0.529 |
+| **Hybrid (production path)** | **0.696** | **0.761** | **0.687** |
+
+- The hybrid merge beats every single layer (**+19% recall@5** over the best solo layer) — all three layers contribute, none is decoration.
+- The literal layer alone is the weakest (exact match only; FTS5 unicode61 is word-splitting-blind for Chinese) — confirming its fallback role.
+- The fuzzy layer is the primary path (beats semantic solo); the semantic layer adds recall on paraphrase and word-swap queries.
+- **Coverage gate verified**: at half warm-up the gate correctly falls back to fuzzy-only (0.587 = fuzzy-only); running the half-warmed semantic layer anyway yields a small gain on this small corpus (0.674) — the 0.90 gate is a conservative safety default for real long sessions, not tuned to this set.
+- Known misses (documented boundaries): zero literal-overlap paraphrases below the semantic min-score (e.g. "打码" for "脱敏") and abstract-concept queries (e.g. "方案").
+
 ## Recent updates
 
 <details>
@@ -157,6 +176,7 @@ Compaction is where memories get lost — the harness summarizes, the original t
 
 > The npm package first published as **0.1.0**; the 0.0.x entries below are development milestones.
 
+- **2026-08** — Retrieval quality evaluation: golden set (4 sessions / 32 docs / 23 hand-annotated queries) measures the production hybrid path at recall@5 **0.696** / MRR **0.761** / nDCG@10 **0.687** — +19% over the best single layer. Ablation confirms fuzzy-as-primary and literal-as-fallback; the coverage gate is verified live (half warm-up falls back to fuzzy-only). Repro: `node eval/run-golden.mjs`.
 - **2026-08** — Measured live on v0.2.1: coarse recall costs ~100–600 tokens vs ~2500–3000 for the old full-context windows on a 10-session hit (~80% saved); a `detail` ±3 window costs ~300 tokens per session. Compaction anchor verified end-to-end: a real `/compact` injected the LLM summary + 3 key original fragments into the next assembly on a live instance, expiring automatically after 3 turns.
 - **2026-08** — v0.2.1: fix — detail windows now extract assistant/message text blocks (block arrays) and filter by block type, so the exact original text of assistant replies appears in drill-down results (found during live verification).
 - **2026-08** — v0.2.0: **progressive disclosure + manual/automatic dual mode** — `recall` returns a light coarse recall by default (titles + snippets, far fewer tokens), with a new `detail` parameter for the second stage (a session's hit list / the exact original-text window via readEvent / paged browsing); description rewritten so the agent recalls proactively (after compaction, when details are missing — no need for the user to ask), keeping the scope red line and invisible-presentation rules; **compaction anchor** — after a compaction, one lightweight anchor (LLM summary + key original fragments, expires after 3 turns) is injected automatically, with exact text always one drill-down away.

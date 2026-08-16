@@ -1,0 +1,95 @@
+{
+  "meta": {
+    "name": "dsh-recall golden evaluation set",
+    "purpose": "Quantify retrieval quality of the three layers (literal / fuzzy / semantic) and the hybrid merge, on a small synthetic corpus with hand-annotated relevance.",
+    "note": "Corpus is synthetic but written to mimic real development-session text (Chinese-dominant). Relevance annotations are manual and lenient (a hit counts if it answers the query). Empty relevant = negative query, excluded from metric averages."
+  },
+  "sessions": [
+    {
+      "id": "session-A",
+      "cwd": "/work/proj-x",
+      "createdAt": 1700000000000,
+      "messages": [
+        { "seq": 1, "type": "user/message", "time": 1700000000000, "text": "我们项目要做一个设备配置同步工具,先讨论一下架构" },
+        { "seq": 2, "type": "assistant/message", "time": 1700000060000, "text": "建议用状态机:每个设备的同步状态是 idle/syncing/conflict/error,由事件驱动流转,冲突状态显式化" },
+        { "seq": 3, "type": "user/message", "time": 1700000120000, "text": "状态机会不会太死板?事件流不是更灵活吗" },
+        { "seq": 4, "type": "assistant/message", "time": 1700000180000, "text": "状态机的好处是冲突状态显式化,事件流容易漏状态;建议状态机 + 事件日志双写,既好排查又灵活" },
+        { "seq": 5, "type": "user/message", "time": 1700000240000, "text": "好,定了状态机方案。端口呢?" },
+        { "seq": 6, "type": "assistant/message", "time": 1700000300000, "text": "服务端口用 8321,管理端口 8322,写进 config.toml,改配置重启生效" },
+        { "seq": 7, "type": "user/message", "time": 1700000360000, "text": "依赖方面,不要引入太重的东西" },
+        { "seq": 8, "type": "assistant/message", "time": 1700000420000, "text": "那就只用标准库加 sqlite,零依赖,部署只需要一个二进制" },
+        { "seq": 9, "type": "user/message", "time": 1700000480000, "text": "定时任务怎么调度" },
+        { "seq": 10, "type": "assistant/message", "time": 1700000540000, "text": "用 cron 表达式,调度器自己写,不引第三方库,支持秒级粒度" }
+      ]
+    },
+    {
+      "id": "session-B",
+      "cwd": "/work/proj-x",
+      "createdAt": 1700100000000,
+      "messages": [
+        { "seq": 1, "type": "user/message", "time": 1700100000000, "text": "线上挂了!同步服务全部 503" },
+        { "seq": 2, "type": "assistant/message", "time": 1700100060000, "text": "看日志是凌晨 3 点磁盘满了,WAL 文件撑爆 /var/lib,SQLite 写不进去" },
+        { "seq": 3, "type": "user/message", "time": 1700100120000, "text": "为什么没人发现" },
+        { "seq": 4, "type": "assistant/message", "time": 1700100180000, "text": "监控只盯 CPU,没盯磁盘水位,这是盲区" },
+        { "seq": 5, "type": "user/message", "time": 1700100240000, "text": "怎么处理" },
+        { "seq": 6, "type": "assistant/message", "time": 1700100300000, "text": "先清理 WAL 重启,再加磁盘告警阈值 80%,自动清理策略兜底" },
+        { "seq": 7, "type": "user/message", "time": 1700100360000, "text": "回滚还是修" },
+        { "seq": 8, "type": "assistant/message", "time": 1700100420000, "text": "不用回滚,根因是磁盘不是代码;加告警和自动清理就够了" },
+        { "seq": 9, "type": "user/message", "time": 1700100480000, "text": "记下来,以后部署检查清单加一条磁盘水位" },
+        { "seq": 10, "type": "assistant/message", "time": 1700100540000, "text": "已加到 deploy 检查清单:磁盘水位、WAL 目录大小、告警阈值" }
+      ]
+    },
+    {
+      "id": "session-C",
+      "cwd": "/work/proj-x",
+      "createdAt": 1700200000000,
+      "messages": [
+        { "seq": 1, "type": "user/message", "time": 1700200000000, "text": "新需求:用户要能导出同步历史" },
+        { "seq": 2, "type": "assistant/message", "time": 1700200060000, "text": "导出格式 CSV 还是 JSON?" },
+        { "seq": 3, "type": "user/message", "time": 1700200120000, "text": "都支持,CSV 给运营,JSON 给 API 用户" },
+        { "seq": 4, "type": "assistant/message", "time": 1700200180000, "text": "导出走后台任务,大文件分页写,避免 OOM" },
+        { "seq": 5, "type": "user/message", "time": 1700200240000, "text": "字段里 device_id 要脱敏吗" },
+        { "seq": 6, "type": "assistant/message", "time": 1700200300000, "text": "运营 CSV 脱敏,API JSON 不脱敏,按角色区分" },
+        { "seq": 7, "type": "user/message", "time": 1700200360000, "text": "会话压缩会不会影响导出" },
+        { "seq": 8, "type": "assistant/message", "time": 1700200420000, "text": "不会,压缩只影响对话展示,导出的是设备同步数据,互不影响" },
+        { "seq": 9, "type": "user/message", "time": 1700200480000, "text": "好,就这么定" }
+      ]
+    },
+    {
+      "id": "session-D",
+      "cwd": "/work/other",
+      "createdAt": 1700300000000,
+      "messages": [
+        { "seq": 1, "type": "user/message", "time": 1700300000000, "text": "周末去爬山怎么样" },
+        { "seq": 2, "type": "assistant/message", "time": 1700300060000, "text": "可以,天气不错,注意防晒" },
+        { "seq": 3, "type": "user/message", "time": 1700300120000, "text": "算了,还是写代码吧" }
+      ]
+    }
+  ],
+  "queries": [
+    { "id": "q01", "q": "状态机", "relevant": ["session-A:2", "session-A:4"] },
+    { "id": "q02", "q": "8321", "relevant": ["session-A:6"] },
+    { "id": "q03", "q": "cron 表达式", "relevant": ["session-A:10"] },
+    { "id": "q04", "q": "磁盘水位", "relevant": ["session-B:2", "session-B:4", "session-B:6", "session-B:9"] },
+    { "id": "q05", "q": "device_id 脱敏", "relevant": ["session-C:5", "session-C:6"] },
+    { "id": "q06", "q": "导出格式", "relevant": ["session-C:2", "session-C:3"] },
+    { "id": "q07", "q": "状态鸡", "relevant": ["session-A:2", "session-A:4"] },
+    { "id": "q08", "q": "端口多少来着", "relevant": ["session-A:6"] },
+    { "id": "q09", "q": "服务怎么全挂了", "relevant": ["session-B:1", "session-B:2"] },
+    { "id": "q10", "q": "凌晨三点磁盘", "relevant": ["session-B:2"] },
+    { "id": "q11", "q": "谁说的零依赖", "relevant": ["session-A:8"] },
+    { "id": "q12", "q": "监控没看什么", "relevant": ["session-B:4"] },
+    { "id": "q13", "q": "同步历 导出", "relevant": ["session-C:1", "session-C:3"] },
+    { "id": "q14", "q": "cpu 还是磁盘哪个没盯", "relevant": ["session-B:4"] },
+    { "id": "q15", "q": "冲突状态怎么定义", "relevant": ["session-A:2", "session-A:4"] },
+    { "id": "q16", "q": "当时为什么选状态机不选事件流", "relevant": ["session-A:2", "session-A:4"] },
+    { "id": "q17", "q": "线上事故后来怎么处理的", "relevant": ["session-B:6", "session-B:8"] },
+    { "id": "q18", "q": "运营拿到的文件要不要打码", "relevant": ["session-C:5", "session-C:6"] },
+    { "id": "q19", "q": "配置里改服务端口", "relevant": ["session-A:6"] },
+    { "id": "q20", "q": "部署之前要检查什么", "relevant": ["session-B:9", "session-B:10"] },
+    { "id": "q21", "q": "同步工具定了哪些方案", "relevant": ["session-A:4", "session-A:8", "session-B:8"] },
+    { "id": "q22", "q": "设备同步这个项目聊过什么", "relevant": ["session-A:4", "session-B:8"] },
+    { "id": "q23", "q": "微信小程序审核", "relevant": [] },
+    { "id": "q24", "q": "周末爬山", "relevant": ["session-D:1"] }
+  ]
+}
